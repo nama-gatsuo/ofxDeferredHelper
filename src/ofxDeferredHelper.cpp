@@ -77,7 +77,7 @@ void Helper::createGui() {
 	float widthSum = 10.;
 	for (int i = 0; i < processor.size(); i++) {
 		const float dw = 240.;
-		float hOffset = 280.;
+		const float colorOffset = 280.;
 		const std::string& name = processor[i]->getName();
 
 		groups[i].setDefaultWidth(dw);
@@ -92,7 +92,14 @@ void Helper::createGui() {
 		groups[i].setName(name);
 
 		float h = groups[i].getHeight();
-		if (heightSum + h > ofGetHeight()) {
+		float hOffset = 10.;
+		if (name == "BgPass" || name == "EdgePass" || name == "PointLightPass") {
+			hOffset = colorOffset;
+		} else if (name == "ShadowLightPass") {
+			hOffset = colorOffset;
+		}
+		
+		if (heightSum + h + hOffset > ofGetHeight()) {
 			// line break
 			widthSum += dw + 10.;
 			groups[i].setPosition(widthSum, 10.);
@@ -105,12 +112,9 @@ void Helper::createGui() {
 		if (name == "PointLightPass") {
 			groups[i].minimizeAll();
 		}
-
-		if (name == "BgPass" || name == "EdgePass" || name == "ShadowLightPass" || name == "PointLightPass") {
-			heightSum += hOffset;
-		} else {
-			heightSum += 10.;
-		}
+		
+		heightSum += hOffset;
+		
 		groups[i].loadFromFile("xml/" + name + ".xml");
 	}
 }
