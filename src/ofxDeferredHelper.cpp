@@ -14,14 +14,14 @@ void Helper::render(std::function<void(float, bool)> drawCall, ofCamera& cam, bo
 	if (shadow->getEnabled()) {
 		shadow->beginShadowMap();
 		drawCall(shadow->getLinearScalar(), true);
-		if (pointLight->getEnabled()) pointLight->drawLights(shadow->getLinearScalar(), true);
+		drawLights(true);
 		shadow->endShadowMap();
 	}
 	
 	float lds = 1. / (cam.getFarClip() - cam.getNearClip());
 	processor.begin(cam, true);
 	drawCall(lds, false);
-	if (pointLight->getEnabled()) pointLight->drawLights(shadow->getLinearScalar(), true);
+	drawLights(false);
 	processor.end(autoDraw);
 }
 
@@ -49,6 +49,10 @@ void Helper::drawGui() {
 	ofPopStyle();
 }
 
+void Helper::drawLights(bool isShadow) {
+	if (pointLight->getEnabled()) pointLight->drawLights(shadow->getLinearScalar(), isShadow);
+}
+
 void Helper::createPasses() {
 	processor.init();
 	auto bg = processor.createPass<ofxDeferred::BgPass>();
@@ -61,7 +65,7 @@ void Helper::createPasses() {
 	e->setEdgeColor(ofFloatColor(0.));
 	processor.createPass<ofxDeferred::SsaoPass>();
 	shadow = processor.createPass<ofxDeferred::ShadowLightPass>();
-	shadow->setPosition(glm::vec3(100., - 200., 100.));
+	shadow->setPosition(glm::vec3(100., 200., 100.));
 	shadow->lookAt(glm::vec3(0.));
 	shadow->setFar(800.);
 	shadow->setNear(50.);

@@ -16,7 +16,7 @@ namespace ofxDeferred {
 		void save();
 		void drawGbuffer();
 		void drawGui();
-
+		void drawLights(bool isShadow);
 	private:
 
 		void createPasses();
