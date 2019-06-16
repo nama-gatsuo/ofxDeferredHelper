@@ -16,16 +16,20 @@ namespace ofxDeferred {
 		void save();
 		void drawGbuffer();
 		void drawGui();
-		void drawLights(bool isShadow);
+		void drawLights(float lds, bool isShadow);
+		const Processor& getProcessor() const {
+			return processor;
+		}
 	private:
 
 		void createPasses();
 		void createGui();
-
-		ofxDeferred::Processor processor;
-		ofPtr<ofxDeferred::ShadowLightPass> shadow;
-		ofPtr<ofxDeferred::PointLightPass> pointLight;
-
+		
+		Processor processor;
+		ofPtr<ShadowLightPass> shadow;
+		ofPtr<PointLightPass> pointLight;
+		ofPtr<DofPass> dof;
+		ofPtr<BloomPass> bloom;
 		std::vector<ofxGuiGroup> groups;
 
 	};

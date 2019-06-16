@@ -14,14 +14,14 @@ void Helper::render(std::function<void(float, bool)> drawCall, ofCamera& cam, bo
 	if (shadow->getEnabled()) {
 		shadow->beginShadowMap();
 		drawCall(shadow->getLinearScalar(), true);
-		drawLights(true);
+		drawLights(shadow->getLinearScalar(), true);
 		shadow->endShadowMap();
 	}
 	
 	float lds = 1. / (cam.getFarClip() - cam.getNearClip());
 	processor.begin(cam, true);
 	drawCall(lds, false);
-	drawLights(false);
+	drawLights(lds, false);
 	processor.end(autoDraw);
 }
 
@@ -36,7 +36,9 @@ void Helper::save() {
 }
 
 void Helper::drawGbuffer() {
-	processor.debugDraw();
+	//processor.debugDraw();
+	//dof->debugDraw();
+	bloom->debugDraw();
 	shadow->debugDraw();
 }
 
@@ -49,9 +51,10 @@ void Helper::drawGui() {
 	ofPopStyle();
 }
 
-void Helper::drawLights(bool isShadow) {
-	if (pointLight->getEnabled()) pointLight->drawLights(shadow->getLinearScalar(), isShadow);
+void Helper::drawLights(float lds, bool isShadow) {
+	if (pointLight->getEnabled()) pointLight->drawLights(lds, isShadow);
 }
+
 
 void Helper::createPasses() {
 	processor.init();
@@ -74,8 +77,8 @@ void Helper::createPasses() {
 	for (int i = 0; i < 6; i++) {
 		pointLight->addLight();
 	}
-	processor.createPass<ofxDeferred::DofPass>();
-	processor.createPass<ofxDeferred::BloomPass>();
+	dof = processor.createPass<ofxDeferred::DofPass>();
+	bloom = processor.createPass<ofxDeferred::BloomPass>();
 }
 void Helper::createGui() {
 	groups.assign(processor.size(), ofxGuiGroup());
