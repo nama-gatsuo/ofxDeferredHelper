@@ -5,6 +5,8 @@ using namespace ofxDeferred;
 Helper::Helper() {}
 
 void Helper::init(int w, int h) {
+
+	ofLogNotice() << w << "," << h;
 	processor.init(w, h);
 	createPasses();
 	createGui();
@@ -57,7 +59,6 @@ void Helper::drawLights(float lds, bool isShadow) {
 
 
 void Helper::createPasses() {
-	processor.init();
 	auto bg = processor.createPass<ofxDeferred::BgPass>();
 	bg->begin();
 	ofClear(10, 12, 24, 255);
