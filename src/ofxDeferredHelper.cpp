@@ -7,21 +7,20 @@ Helper::Helper() {}
 void Helper::init(int w, int h) {
 	processor.init(w, h);
 	createPasses();
-	createGui();
 }
 
 void Helper::render(std::function<void(float, bool)> drawCall, ofCamera& cam, bool autoDraw) {
-	if (shadow->getEnabled()) {
+	if (shadow && shadow->getEnabled()) {
 		shadow->beginShadowMap();
 		drawCall(shadow->getLinearScalar(), true);
-		if (pointLight->getEnabled()) pointLight->drawLights(shadow->getLinearScalar(), true);
+		if (pointLight && pointLight->getEnabled()) pointLight->drawLights(shadow->getLinearScalar(), true);
 		shadow->endShadowMap();
 	}
 	
 	float lds = 1. / (cam.getFarClip() - cam.getNearClip());
 	processor.begin(cam, true);
 	drawCall(lds, false);
-	if (pointLight->getEnabled()) pointLight->drawLights(shadow->getLinearScalar(), true);
+	if (pointLight && pointLight->getEnabled()) pointLight->drawLights(lds, false);
 	processor.end(autoDraw);
 }
 
@@ -30,26 +29,72 @@ const ofFbo& Helper::getRenderedImage() const {
 }
 
 void Helper::save() {
-	for (auto& g : groups) {
-		g.saveToFile("xml/" + g.getName() + ".xml");
+	json.clear();
+	ofParameterGroup g;
+	g.setName("deferred");
+	for (auto& gr : groups) {
+		g.add(gr.second.getParameter());
+	}
+	ofSerialize(json, g);
+	ofSaveJson("json/deferred.json", json);
+}
+
+void ofxDeferred::Helper::load() {
+	json = ofLoadJson("json/deferred.json");
+	if (!json.is_null()) {
+		const auto& j = json["deferred"];
+		for (auto& it = j.cbegin(); it != j.cend(); ++it) {
+			ofJson cj;
+			cj[it.key()] = *it;
+			groups[it.key()].loadFrom(cj);
+		}
+	} else {
+		ofLogError("ofxDeferred::Helper") << "no json file found";
 	}
 }
 
-void Helper::drawGbuffer() {
-	processor.debugDraw();
-	shadow->debugDraw();
+void Helper::debugDraw() {
+	switch (debugViewMode.get()) {
+	case 0: {
+		processor.debugDraw();
+		if (shadow) shadow->debugDraw();
+	}break;
+	case 1: {
+		if (dof) dof->debugDraw();
+	}break; 
+	case 2: {
+		if (bloom) bloom->debugDraw();
+	}break;
+	default: break;
+	}
+	
 }
 
 void Helper::drawGui() {
 	ofPushStyle();
 	ofEnableAlphaBlending();
 	for (auto& g : groups) {
-		g.draw();
+		g.second.draw();
 	}
+	helperGroup.draw();
 	ofPopStyle();
 }
 
 void Helper::createPasses() {
+	
+	createAllPasses();
+	createGui();
+
+	ofDirectory dir;
+	if (!dir.doesDirectoryExist("json")) {
+		dir.createDirectory("json");
+	} else {
+		load();
+	}
+	
+}
+
+void Helper::createAllPasses() {
 	processor.init();
 	auto bg = processor.createPass<ofxDeferred::BgPass>();
 	bg->begin();
@@ -70,11 +115,12 @@ void Helper::createPasses() {
 	for (int i = 0; i < 6; i++) {
 		pointLight->addLight();
 	}
-	processor.createPass<ofxDeferred::DofPass>();
-	processor.createPass<ofxDeferred::BloomPass>();
+	dof = processor.createPass<ofxDeferred::DofPass>();
+	bloom = processor.createPass<ofxDeferred::BloomPass>();
 }
+
 void Helper::createGui() {
-	groups.assign(processor.size(), ofxGuiGroup());
+	
 	float heightSum = 10.;
 	float widthSum = 10.;
 	for (int i = 0; i < processor.size(); i++) {
@@ -82,41 +128,56 @@ void Helper::createGui() {
 		const float colorOffset = 280.;
 		const std::string& name = processor[i]->getName();
 
-		groups[i].setDefaultWidth(dw);
-		groups[i].setBackgroundColor(ofFloatColor(0., 0.5));
-		groups[i].setDefaultBackgroundColor(ofFloatColor(0., 0.5));
-		groups[i].setHeaderBackgroundColor(ofFloatColor(0.6, 0.3, 0.8, 0.5));
-		groups[i].setDefaultHeaderBackgroundColor(ofFloatColor(0.0, 0.5));
-		groups[i].setDefaultFillColor(ofFloatColor(0.3, 0.3, 0.6, 0.5));
-		groups[i].setBorderColor(ofFloatColor(0.1, 0.5));
-		groups[i].setDefaultBorderColor(ofFloatColor(0.1, 0.5));
-		groups[i].setup(processor[i]->getParameters(), "xml/" + name + ".xml");
-		groups[i].setName(name);
+		groups[name].setDefaultWidth(dw);
+		groups[name].setBackgroundColor(ofFloatColor(0., 0.5));
+		groups[name].setDefaultBackgroundColor(ofFloatColor(0., 0.5));
+		groups[name].setHeaderBackgroundColor(ofFloatColor(0.6, 0.3, 0.8, 0.5));
+		groups[name].setDefaultHeaderBackgroundColor(ofFloatColor(0.0, 0.5));
+		groups[name].setDefaultFillColor(ofFloatColor(0.3, 0.3, 0.6, 0.5));
+		groups[name].setBorderColor(ofFloatColor(0.1, 0.5));
+		groups[name].setDefaultBorderColor(ofFloatColor(0.1, 0.5));
+		groups[name].setup(processor[i]->getParameters());
+		groups[name].setName(name);
 
-		float h = groups[i].getHeight();
+		float h = groups[name].getHeight();
 		float hOffset = 10.;
-		if (name == "BgPass" || name == "EdgePass" || name == "PointLightPass") {
-			hOffset = colorOffset;
-		} else if (name == "ShadowLightPass") {
+		if (name == RenderPassRegistry::Bg ||
+			name == RenderPassRegistry::Edge ||
+			name == RenderPassRegistry::PointLight ||
+			name == RenderPassRegistry::ShadowLight) {
+
 			hOffset = colorOffset;
 		}
 		
 		if (heightSum + h + hOffset > ofGetHeight()) {
 			// line break
 			widthSum += dw + 10.;
-			groups[i].setPosition(widthSum, 10.);
+			groups[name].setPosition(widthSum, 10.);
 			heightSum = h + 10.;
 		} else {
-			groups[i].setPosition(widthSum, heightSum);
+			groups[name].setPosition(widthSum, heightSum);
 			heightSum += h;
 		}
 
-		if (name == "PointLightPass") {
-			groups[i].minimizeAll();
+		if (name == RenderPassRegistry::PointLight) {
+			groups[name].minimizeAll();
 		}
 		
 		heightSum += hOffset;
-		
-		groups[i].loadFromFile("xml/" + name + ".xml");
+
+		// groups[i].loadFromFile("xml/" + name + ".xml");
 	}
+
+	helperGroup.setup("helper");
+	helperGroup.setPosition(widthSum, heightSum);
+	helperGroup.setHeaderBackgroundColor(ofFloatColor(0.94, 0.1, 0.2, 0.5));
+	helperGroup.add(debugViewMode.set("debugViewMode", 0, 0, 2));
+	saveButton.setup("save");
+	saveButton.addListener(this, &Helper::save);
+	helperGroup.add(&saveButton);
+
+	loadButton.setup("load");
+	loadButton.addListener(this, &Helper::load);
+	helperGroup.add(&loadButton);
+
 }
