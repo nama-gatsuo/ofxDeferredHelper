@@ -5,10 +5,19 @@ using namespace ofxDeferred;
 Helper::Helper() {}
 
 void Helper::init(int w, int h) {
-
-	ofLogNotice() << w << "," << h;
+	
 	processor.init(w, h);
-	createPasses();
+	
+	createAllPasses();
+	createGui();
+
+	ofDirectory dir;
+	if (!dir.doesDirectoryExist("json")) {
+		dir.createDirectory("json");
+	} else {
+		load();
+	}
+
 }
 
 void Helper::render(std::function<void(float, bool)> drawCall, ofCamera& cam, bool autoDraw) {
@@ -57,16 +66,19 @@ void ofxDeferred::Helper::load() {
 
 void Helper::debugDraw() {
 	switch (debugViewMode.get()) {
-	case 0: {
+	case 1: {
 		processor.debugDraw();
+	}break;
+	case 2:{
 		if (shadow) shadow->debugDraw();
 	}break;
-	case 1: {
+	case 3: {
 		if (dof) dof->debugDraw();
 	}break;
-	case 2: {
+	case 4: {
 		if (bloom) bloom->debugDraw();
 	}break;
+
 	default: break;
 	}
 
@@ -84,21 +96,6 @@ void Helper::drawGui() {
 
 void Helper::drawLights(float lds, bool isShadow) {
 	if (pointLight->getEnabled()) pointLight->drawLights(lds, isShadow);
-}
-
-
-void Helper::createPasses() {
-
-	createAllPasses();
-	createGui();
-
-	ofDirectory dir;
-	if (!dir.doesDirectoryExist("json")) {
-		dir.createDirectory("json");
-	} else {
-		load();
-	}
-
 }
 
 void Helper::createAllPasses() {
@@ -140,6 +137,7 @@ void Helper::createGui() {
 		groups[name].setDefaultBackgroundColor(ofFloatColor(0., 0.5));
 		groups[name].setHeaderBackgroundColor(ofFloatColor(0.6, 0.3, 0.8, 0.5));
 		groups[name].setDefaultHeaderBackgroundColor(ofFloatColor(0.0, 0.5));
+		groups[name].setFillColor(ofFloatColor(0.3, 0.3, 0.6, 0.5));
 		groups[name].setDefaultFillColor(ofFloatColor(0.3, 0.3, 0.6, 0.5));
 		groups[name].setBorderColor(ofFloatColor(0.1, 0.5));
 		groups[name].setDefaultBorderColor(ofFloatColor(0.1, 0.5));
@@ -171,14 +169,15 @@ void Helper::createGui() {
 		}
 
 		heightSum += hOffset;
-
-		// groups[i].loadFromFile("xml/" + name + ".xml");
 	}
 
 	helperGroup.setup("helper");
 	helperGroup.setPosition(widthSum, heightSum);
+	helperGroup.setBackgroundColor(ofFloatColor(0., 0.5));
 	helperGroup.setHeaderBackgroundColor(ofFloatColor(0.94, 0.1, 0.2, 0.5));
-	helperGroup.add(debugViewMode.set("debugViewMode", 0, 0, 2));
+	helperGroup.setBorderColor(ofFloatColor(0.1, 0.5));
+	helperGroup.setFillColor(ofFloatColor(0.3, 0.3, 0.6, 0.5));
+	helperGroup.add(debugViewMode.set("debugViewMode", 0, 0, 4));
 	saveButton.setup("save");
 	saveButton.addListener(this, &Helper::save);
 	helperGroup.add(&saveButton);

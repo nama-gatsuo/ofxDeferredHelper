@@ -26,7 +26,6 @@ namespace ofxDeferred {
 		}
 	private:
 		void createAllPasses();
-		void createPasses();
 		void createGui();
 
 		ofxDeferred::Processor processor;
