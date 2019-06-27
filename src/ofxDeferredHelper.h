@@ -14,14 +14,16 @@ namespace ofxDeferred {
 		void init(int w = ofGetWidth(), int h = ofGetHeight());
 		void render(std::function<void(float, bool)> drawCall, ofCamera& cam, bool autoDraw = true);
 		const ofFbo& getRenderedImage() const;
-		
+
 		void save();
 		void load();
 
 		void debugDraw();
 		void drawGui();
-		//void load();
-
+		void drawLights(float lds, bool isShadow);
+		const Processor& getProcessor() const {
+			return processor;
+		}
 	private:
 		void createAllPasses();
 		void createPasses();

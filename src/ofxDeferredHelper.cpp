@@ -5,6 +5,8 @@ using namespace ofxDeferred;
 Helper::Helper() {}
 
 void Helper::init(int w, int h) {
+
+	ofLogNotice() << w << "," << h;
 	processor.init(w, h);
 	createPasses();
 }
@@ -13,14 +15,14 @@ void Helper::render(std::function<void(float, bool)> drawCall, ofCamera& cam, bo
 	if (shadow && shadow->getEnabled()) {
 		shadow->beginShadowMap();
 		drawCall(shadow->getLinearScalar(), true);
-		if (pointLight && pointLight->getEnabled()) pointLight->drawLights(shadow->getLinearScalar(), true);
+		drawLights(shadow->getLinearScalar(), true);
 		shadow->endShadowMap();
 	}
-	
+
 	float lds = 1. / (cam.getFarClip() - cam.getNearClip());
 	processor.begin(cam, true);
 	drawCall(lds, false);
-	if (pointLight && pointLight->getEnabled()) pointLight->drawLights(lds, false);
+	drawLights(lds, false);
 	processor.end(autoDraw);
 }
 
@@ -61,13 +63,13 @@ void Helper::debugDraw() {
 	}break;
 	case 1: {
 		if (dof) dof->debugDraw();
-	}break; 
+	}break;
 	case 2: {
 		if (bloom) bloom->debugDraw();
 	}break;
 	default: break;
 	}
-	
+
 }
 
 void Helper::drawGui() {
@@ -80,8 +82,13 @@ void Helper::drawGui() {
 	ofPopStyle();
 }
 
+void Helper::drawLights(float lds, bool isShadow) {
+	if (pointLight->getEnabled()) pointLight->drawLights(lds, isShadow);
+}
+
+
 void Helper::createPasses() {
-	
+
 	createAllPasses();
 	createGui();
 
@@ -91,7 +98,7 @@ void Helper::createPasses() {
 	} else {
 		load();
 	}
-	
+
 }
 
 void Helper::createAllPasses() {
@@ -106,7 +113,7 @@ void Helper::createAllPasses() {
 	e->setEdgeColor(ofFloatColor(0.));
 	processor.createPass<ofxDeferred::SsaoPass>();
 	shadow = processor.createPass<ofxDeferred::ShadowLightPass>();
-	shadow->setPosition(glm::vec3(100., - 200., 100.));
+	shadow->setPosition(glm::vec3(100., 200., 100.));
 	shadow->lookAt(glm::vec3(0.));
 	shadow->setFar(800.);
 	shadow->setNear(50.);
@@ -120,7 +127,7 @@ void Helper::createAllPasses() {
 }
 
 void Helper::createGui() {
-	
+
 	float heightSum = 10.;
 	float widthSum = 10.;
 	for (int i = 0; i < processor.size(); i++) {
@@ -148,7 +155,7 @@ void Helper::createGui() {
 
 			hOffset = colorOffset;
 		}
-		
+
 		if (heightSum + h + hOffset > ofGetHeight()) {
 			// line break
 			widthSum += dw + 10.;
@@ -162,7 +169,7 @@ void Helper::createGui() {
 		if (name == RenderPassRegistry::PointLight) {
 			groups[name].minimizeAll();
 		}
-		
+
 		heightSum += hOffset;
 
 		// groups[i].loadFromFile("xml/" + name + ".xml");
