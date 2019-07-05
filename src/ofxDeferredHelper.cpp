@@ -4,8 +4,9 @@ using namespace ofxDeferred;
 
 Helper::Helper() {}
 
-void Helper::init(int w, int h) {
-	
+void Helper::init(int w, int h, bool loadParam, const std::string& name) {
+	this->name = name;
+	// ofLogNotice("ofxDeferred::Helper") << w << "," << h;
 	processor.init(w, h);
 	
 	createAllPasses();
@@ -15,7 +16,9 @@ void Helper::init(int w, int h) {
 	if (!dir.doesDirectoryExist("json")) {
 		dir.createDirectory("json");
 	} else {
-		load();
+		if (loadParam) {
+			loadParams(ofLoadJson("json/" + name + ".json"));
+		}
 	}
 
 }
@@ -40,18 +43,19 @@ const ofFbo& Helper::getRenderedImage() const {
 }
 
 void Helper::save() {
-	json.clear();
+	ofJson json = ofLoadJson("json/" + name + ".json");
+	ofJson cj;
 	ofParameterGroup g;
 	g.setName("deferred");
 	for (auto& gr : groups) {
 		g.add(gr.second.getParameter());
 	}
-	ofSerialize(json, g);
-	ofSaveJson("json/deferred.json", json);
+	ofSerialize(cj, g);
+	json["deferred"] = cj["deferred"];
+	ofSaveJson("json/" + name + ".json", json);
 }
 
-void ofxDeferred::Helper::load() {
-	json = ofLoadJson("json/deferred.json");
+void Helper::loadParams(const ofJson& json) {
 	if (!json.is_null()) {
 		const auto& j = json["deferred"];
 		for (auto& it = j.cbegin(); it != j.cend(); ++it) {
@@ -98,17 +102,20 @@ void Helper::drawLights(float lds, bool isShadow) {
 	if (pointLight->getEnabled()) pointLight->drawLights(lds, isShadow);
 }
 
+void Helper::addLight(ofPtr<PointLight> light) {
+	pointLight->addLight(light);
+}
+
 void Helper::createAllPasses() {
-	processor.init();
-	auto bg = processor.createPass<ofxDeferred::BgPass>();
+	bg = processor.createPass<ofxDeferred::BgPass>();
 	bg->begin();
 	ofClear(10, 12, 24, 255);
 	bg->end();
 
-	auto e = processor.createPass<ofxDeferred::EdgePass>();
-	e->setUseReadColor(true);
-	e->setEdgeColor(ofFloatColor(0.));
-	processor.createPass<ofxDeferred::SsaoPass>();
+	edge = processor.createPass<ofxDeferred::EdgePass>();
+	edge->setUseReadColor(true);
+	edge->setEdgeColor(ofFloatColor(0.));
+	ssao = processor.createPass<ofxDeferred::SsaoPass>();
 	shadow = processor.createPass<ofxDeferred::ShadowLightPass>();
 	shadow->setPosition(glm::vec3(100., 200., 100.));
 	shadow->lookAt(glm::vec3(0.));
@@ -154,7 +161,7 @@ void Helper::createGui() {
 			hOffset = colorOffset;
 		}
 
-		if (heightSum + h + hOffset > ofGetHeight()) {
+		if (heightSum + h + hOffset > ofGetViewportHeight()) {
 			// line break
 			widthSum += dw + 10.;
 			groups[name].setPosition(widthSum, 10.);
