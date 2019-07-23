@@ -2,25 +2,12 @@
 
 using namespace ofxDeferred;
 
-Helper::Helper() {}
+Helper::Helper(const std::string& name) : name(name) {}
 
-void Helper::init(int w, int h, bool loadParam, const std::string& name) {
-	this->name = name;
-	// ofLogNotice("ofxDeferred::Helper") << w << "," << h;
+void Helper::init(int w, int h) {
 	processor.init(w, h);
-	
 	createAllPasses();
 	createGui();
-
-	ofDirectory dir;
-	if (!dir.doesDirectoryExist("json")) {
-		dir.createDirectory("json");
-	} else {
-		if (loadParam) {
-			loadParams(ofLoadJson("json/" + name + ".json"));
-		}
-	}
-
 }
 
 void Helper::render(std::function<void(float, bool)> drawCall, ofCamera& cam, bool autoDraw) {
@@ -42,17 +29,26 @@ const ofFbo& Helper::getRenderedImage() const {
 	return processor.getFbo();
 }
 
-void Helper::save() {
+const ofTexture& Helper::getTexture() const {
+	return getRenderedImage().getTexture();
+}
+
+void Helper::saveParams() {
+	
 	ofJson json = ofLoadJson("json/" + name + ".json");
-	ofJson cj;
+
+	// Create a child object of json and add ParameterGroup to it
 	ofParameterGroup g;
 	g.setName("deferred");
 	for (auto& gr : groups) {
 		g.add(gr.second.getParameter());
 	}
-	ofSerialize(cj, g);
+	
+	ofJson cj;
+	ofSerialize(cj, g); // cj << g
 	json["deferred"] = cj["deferred"];
-	ofSaveJson("json/" + name + ".json", json);
+	
+	ofSavePrettyJson("json/" + name + ".json", json);
 }
 
 void Helper::loadParams(const ofJson& json) {
@@ -66,6 +62,12 @@ void Helper::loadParams(const ofJson& json) {
 	} else {
 		ofLogError("ofxDeferred::Helper") << "no json file found";
 	}
+}
+
+void ofxDeferred::Helper::load() {
+	auto& json = ofLoadJson("json/renderers/" + name + ".json");
+	if (json.is_null()) ofLogError("ofxDeferredHelper") << "No json found: " << name;
+	else loadParams(json);
 }
 
 void Helper::debugDraw() {
@@ -134,9 +136,10 @@ void Helper::createGui() {
 
 	float heightSum = 10.;
 	float widthSum = 10.;
+	const float dw = 240.;
+	const float colorOffset = 280.;
+
 	for (int i = 0; i < processor.size(); i++) {
-		const float dw = 240.;
-		const float colorOffset = 280.;
 		const std::string& name = processor[i]->getName();
 
 		groups[name].setDefaultWidth(dw);
@@ -186,11 +189,20 @@ void Helper::createGui() {
 	helperGroup.setFillColor(ofFloatColor(0.3, 0.3, 0.6, 0.5));
 	helperGroup.add(debugViewMode.set("debugViewMode", 0, 0, 4));
 	saveButton.setup("save");
-	saveButton.addListener(this, &Helper::save);
+	saveButton.addListener(this, &Helper::saveParams);
 	helperGroup.add(&saveButton);
 
 	loadButton.setup("load");
 	loadButton.addListener(this, &Helper::load);
 	helperGroup.add(&loadButton);
+
+	// Load parameters from json directory 
+	ofDirectory dir;
+	if (!dir.doesDirectoryExist("json")) {
+		dir.createDirectory("json");
+	} else {
+		auto& json = ofLoadJson("json/" + name + ".json");
+		if (!json.is_null()) loadParams(json);
+	}
 
 }

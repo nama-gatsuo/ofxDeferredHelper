@@ -10,20 +10,29 @@
 namespace ofxDeferred {
 	class Helper {
 	public:
-		Helper();
-		void init(int w = ofGetWidth(), int h = ofGetHeight(), bool loadParam = true, const std::string& name = "deferred");
+		Helper(const std::string& name = "deferred");
+		void init(int w = ofGetWidth(), int h = ofGetHeight());
 		void render(std::function<void(float, bool)> drawCall, ofCamera& cam, bool autoDraw = true);
+		
 		const ofFbo& getRenderedImage() const;
+		const ofTexture& getTexture() const;
 
-		void save();
+		void saveParams();
 		void loadParams(const ofJson& json);
-		void load() {
-			loadParams(ofLoadJson("json/" + name + ".json"));
-		}
+
+		// Load parameter with default name for click event
+		void load();
 
 		void debugDraw();
 		void drawGui();
+
+		// Draw lights. This fucntion should be called in frame buffer context
 		void drawLights(float lds, bool isShadow);
+		// Add a light to PointLightsPass. Mainly used for light object inheritance
+		// TODO: Problem is that light objecs can't be flexible with scene.
+		//       Helper must have all light pointers among all scene.
+		void addLight(ofPtr<PointLight> light);
+
 		Processor& getProcessor() {
 			return processor;
 		}
@@ -31,7 +40,6 @@ namespace ofxDeferred {
 			return processor;
 		}
 		const GBuffer& getGBuffer() const { return processor.getGBuffer(); }
-		void addLight(ofPtr<PointLight> light);
 		
 		ofPtr<ofxDeferred::BgPass> bg;
 		ofPtr<ofxDeferred::EdgePass> edge;
@@ -40,9 +48,11 @@ namespace ofxDeferred {
 		ofPtr<ofxDeferred::PointLightPass> pointLight;
 		ofPtr<ofxDeferred::DofPass> dof;
 		ofPtr<ofxDeferred::BloomPass> bloom;
+
+		void createGui();
+
 	private:
 		void createAllPasses();
-		void createGui();
 
 		ofxDeferred::Processor processor;
 		std::unordered_map<std::string, ofxGuiGroup> groups;
