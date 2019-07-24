@@ -53,6 +53,7 @@ namespace ofxDeferred {
 
 	private:
 		void createAllPasses();
+		void createHelperGui();
 
 		ofxDeferred::Processor processor;
 		std::unordered_map<std::string, ofxGuiGroup> groups;
