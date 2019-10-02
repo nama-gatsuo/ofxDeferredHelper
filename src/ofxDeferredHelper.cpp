@@ -73,18 +73,21 @@ namespace ofxDeferred {
 	}
 
 	void Helper::debugDraw() {
+		glm::vec2 s(ofGetViewportWidth() * 0.25, ofGetViewportHeight() * 0.25);
+		glm::vec2 p(0, ofGetHeight() - s.y);
+
 		switch (debugViewMode.get()) {
 		case 1: {
 			processor.debugDraw();
 		}break;
 		case 2:{
-			if (shadow) shadow->debugDraw();
+			if (shadow) shadow->debugDraw(p, s);
 		}break;
 		case 3: {
-			if (dof) dof->debugDraw();
+			if (dof) dof->debugDraw(p, s);
 		}break;
 		case 4: {
-			if (bloom) bloom->debugDraw();
+			if (bloom) bloom->debugDraw(p, s);
 		}break;
 
 		default: break;
