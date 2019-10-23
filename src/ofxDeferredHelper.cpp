@@ -12,7 +12,7 @@ namespace ofxDeferred {
 
 	void Helper::render(std::function<void(float, bool)> drawCall, ofCamera& cam, bool autoDraw) {
 		if (shadow && shadow->getEnabled()) {
-			shadow->beginShadowMap();
+			shadow->beginShadowMap(cam);
 			drawCall(shadow->getLinearScalar(), true);
 			drawLights(shadow->getLinearScalar(), true);
 			shadow->endShadowMap();
@@ -126,9 +126,9 @@ namespace ofxDeferred {
 		shadow = processor.createPass<ofxDeferred::ShadowLightPass>();
 		shadow->setPosition(glm::vec3(100., 200., 100.));
 		shadow->lookAt(glm::vec3(0.));
-		shadow->setFar(800.);
-		shadow->setNear(50.);
-		shadow->setViewPortSize(256.);
+		//shadow->setFar(800.);
+		//shadow->setNear(50.);
+		//shadow->setViewPortSize(256.);
 		pointLight = processor.createPass<ofxDeferred::PointLightPass>();
 		for (int i = 0; i < 6; i++) {
 			pointLight->addLight();
