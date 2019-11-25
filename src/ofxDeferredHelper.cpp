@@ -1,32 +1,39 @@
 #include "ofxDeferredHelper.h"
+#include "BaseObject.h"
 
 namespace ofxDeferred {
 
 	Helper::Helper(const std::string& name) : name(name) {}
 
 	void Helper::init(int w, int h) {
-		processor.init(w, h);
+		processor = std::make_shared<Processor>();
+		processor->init(w, h);
 		createAllPasses();
 		createGui();
 	}
 
-	void Helper::render(std::function<void(float, bool)> drawCall, ofCamera& cam, bool autoDraw) {
+	void Helper::render(std::function<void(const ofxDeferred::RenderInfo& mode)> drawCall, ofCamera& cam, bool autoDraw) {
 		if (shadow && shadow->getEnabled()) {
 			shadow->beginShadowMap(cam);
-			drawCall(shadow->getLinearScalar(), true);
-			drawLights(shadow->getLinearScalar(), true);
+			ofxDeferred::RenderInfo mode{
+				shadow->getLinearScalar(), true, 
+				glm::vec4(0), glm::mat4() };
+			drawCall(mode);
+			drawLights(mode);
 			shadow->endShadowMap();
 		}
 
+		
 		float lds = 1. / (cam.getFarClip() - cam.getNearClip());
-		processor.begin(cam, true);
-		drawCall(lds, false);
-		drawLights(lds, false);
-		processor.end(autoDraw);
+		ofxDeferred::RenderInfo mode{ lds, false, glm::vec4(0, -1, 0, 100000), glm::inverse(cam.getModelViewMatrix()) };
+		processor->begin(cam, true);
+		drawCall(mode);
+		drawLights(mode);
+		processor->end(autoDraw);
 	}
 
 	const ofFbo& Helper::getRenderedImage() const {
-		return processor.getFbo();
+		return processor->getFbo();
 	}
 
 	const ofTexture& Helper::getTexture() const {
@@ -78,7 +85,7 @@ namespace ofxDeferred {
 
 		switch (debugViewMode.get()) {
 		case 1: {
-			processor.debugDraw();
+			processor->debugDraw();
 		}break;
 		case 2:{
 			if (shadow) shadow->debugDraw(p, s);
@@ -105,8 +112,8 @@ namespace ofxDeferred {
 		ofPopStyle();
 	}
 
-	void Helper::drawLights(float lds, bool isShadow) {
-		if (pointLight->getEnabled()) pointLight->drawLights(lds, isShadow);
+	void Helper::drawLights(const ofxDeferred::RenderInfo& mode) {
+		if (pointLight->getEnabled()) pointLight->drawLights(mode);
 	}
 
 	void Helper::addLight(ofPtr<PointLight> light) {
@@ -114,27 +121,25 @@ namespace ofxDeferred {
 	}
 
 	void Helper::createAllPasses() {
-		bg = processor.createPass<ofxDeferred::BgPass>();
+		bg = processor->createPass<ofxDeferred::BgPass>();
 		bg->begin();
 		ofClear(10, 12, 24, 255);
 		bg->end();
 
-		edge = processor.createPass<ofxDeferred::EdgePass>();
+		edge = processor->createPass<ofxDeferred::EdgePass>();
 		edge->setUseReadColor(true);
 		edge->setEdgeColor(ofFloatColor(0.));
-		ssao = processor.createPass<ofxDeferred::SsaoPass>();
-		shadow = processor.createPass<ofxDeferred::ShadowLightPass>();
+		ssao = processor->createPass<ofxDeferred::SsaoPass>();
+		shadow = processor->createPass<ofxDeferred::ShadowLightPass>();
 		shadow->setPosition(glm::vec3(100., 200., 100.));
 		shadow->lookAt(glm::vec3(0.));
-		//shadow->setFar(800.);
-		//shadow->setNear(50.);
-		//shadow->setViewPortSize(256.);
-		pointLight = processor.createPass<ofxDeferred::PointLightPass>();
-		for (int i = 0; i < 6; i++) {
+		pointLight = processor->createPass<ofxDeferred::PointLightPass>();
+		for (int i = 0; i < 4; i++) {
 			pointLight->addLight();
 		}
-		dof = processor.createPass<ofxDeferred::DofPass>();
-		bloom = processor.createPass<ofxDeferred::BloomPass>();
+		fog = processor->createPass<FogPass>();
+		dof = processor->createPass<ofxDeferred::DofPass>();
+		bloom = processor->createPass<ofxDeferred::BloomPass>();
 	}
 
 	void Helper::createGui() {
@@ -144,8 +149,8 @@ namespace ofxDeferred {
 		const float dw = 240.;
 		const float colorOffset = 280.;
 
-		for (int i = 0; i < processor.size(); i++) {
-			const std::string& name = processor[i]->getName();
+		for (int i = 0; i < processor->size(); i++) {
+			const std::string& name = (*processor)[i]->getName();
 
 			groups[name].setDefaultWidth(dw);
 			groups[name].setBackgroundColor(ofFloatColor(0., 0.5));
@@ -157,7 +162,7 @@ namespace ofxDeferred {
 			groups[name].setBorderColor(ofFloatColor(0.1, 0.5));
 			groups[name].setDefaultBorderColor(ofFloatColor(0.1, 0.5));
 			
-			groups[name].setup(processor[i]->getParameters());
+			groups[name].setup((*processor)[i]->getParameters());
 			groups[name].setName(name);
 
 			float h = groups[name].getHeight();
