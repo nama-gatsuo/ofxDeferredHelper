@@ -1,5 +1,4 @@
 #include "ofxDeferredHelper.h"
-#include "BaseObject.h"
 
 namespace ofxDeferred {
 
