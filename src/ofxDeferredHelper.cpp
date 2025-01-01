@@ -81,7 +81,7 @@ namespace ofxDeferred {
 	void Helper::debugDraw() {
 		glm::vec2 s(ofGetViewportWidth() * 0.25, ofGetViewportHeight() * 0.25);
 		glm::vec2 p(0, ofGetHeight() - s.y);
-
+		
 		switch (debugViewMode.get()) {
 		case 1: {
 			processor->debugDraw();
@@ -95,8 +95,9 @@ namespace ofxDeferred {
 		case 4: {
 			if (bloom) bloom->debugDraw(p, s);
 		}break;
-
-		default: break;
+		default:
+			processor->debugDraw();
+			break;
 		}
 
 	}
@@ -139,6 +140,7 @@ namespace ofxDeferred {
 		fog = processor->createPass<FogPass>();
 		dof = processor->createPass<ofxDeferred::DofPass>();
 		bloom = processor->createPass<ofxDeferred::BloomPass>();
+		processor->createPass<ofxDeferred::FxaaPass>();
 	}
 
 	void Helper::createGui() {
